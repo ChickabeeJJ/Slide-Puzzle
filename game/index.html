@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>Slide &amp; Paint</title>
+    <meta name="description" content="Roll the ball, paint every tile! A relaxing maze puzzle with 200+ levels." />
+    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+    <link rel="preload" href="assets/fonts/fredoka-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" aria-label="Game board"></canvas>
+
+      <!-- In-game HUD -->
+      <div id="hud" class="layer">
+        <button id="btn-back" class="round-btn" aria-label="Menu">
+          <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <div id="level-title">
+          <span id="diff-pill" class="pill">EASY</span>
+          <span id="level-name">Level 1</span>
+          <span id="move-counter">Moves 0 · Par 2</span>
+        </div>
+        <div id="board-area"></div>
+        <div id="actions">
+          <button id="btn-undo" class="round-btn small" aria-label="Undo">
+            <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+          </button>
+          <button id="btn-restart" class="round-btn small" aria-label="Restart">
+            <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v5h-5" /></svg>
+          </button>
+          <button id="btn-hint" class="hint-btn" aria-label="Hint">
+            <svg viewBox="0 0 48 48" class="bulb">
+              <circle cx="24" cy="24" r="23" fill="#ffbd2f" />
+              <path d="M24 11a9 9 0 0 0-5 16.5V31h10v-3.5A9 9 0 0 0 24 11z" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round" />
+              <path d="M20 35h8M21 38.5h6" stroke="#fff" stroke-width="2.6" stroke-linecap="round" />
+              <path d="M24 5v2.5M10.5 10.5l1.8 1.8M37.5 10.5l-1.8 1.8M6 24h2.5M39.5 24H42" stroke="#fff" stroke-width="2.4" stroke-linecap="round" />
+            </svg>
+            <span id="hint-badge" class="badge">3</span>
+            <span id="hint-ad" class="badge ad">
+              <svg viewBox="0 0 20 20"><rect x="3" y="5" width="14" height="10" rx="2" fill="#fff" /><path d="M9 8l3.5 2L9 12z" fill="#2fb350" /></svg>
+            </span>
+          </button>
+        </div>
+        <div id="tutorial" class="hidden">Swipe to roll the ball.<br /><b>Paint every tile!</b></div>
+      </div>
+
+      <!-- Main menu -->
+      <div id="menu" class="layer screen hidden">
+        <div class="menu-inner">
+          <h1 class="logo" aria-label="Slide and Paint">
+            <span class="l1">Slide</span>
+            <span class="amp">&amp;</span>
+            <span class="l2">Paint</span>
+          </h1>
+          <button id="btn-play" class="big-btn">
+            <span>PLAY</span>
+            <small id="play-sub">Level 1</small>
+          </button>
+          <div class="menu-row">
+            <button class="tile-btn" id="btn-levels"><i>▦</i><span>Levels</span></button>
+            <button class="tile-btn" id="btn-daily"><i>★</i><span>Daily</span><em id="daily-sub"></em></button>
+            <button class="tile-btn" id="btn-skins"><i>●</i><span>Balls</span></button>
+            <button class="tile-btn" id="btn-settings"><i>⚙</i><span>Settings</span></button>
+          </div>
+          <div class="star-chip"><span class="star">★</span> <b id="menu-stars">0</b></div>
+          <button class="text-btn" id="btn-privacy-menu">Privacy &amp; Terms</button>
+        </div>
+      </div>
+
+      <!-- Level select -->
+      <div id="levels" class="layer screen hidden">
+        <header>
+          <button class="round-btn back" data-back aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg></button>
+          <h2>Levels</h2>
+          <div class="star-chip"><span class="star">★</span> <b class="stars-total">0</b></div>
+        </header>
+        <div id="level-grid" class="grid"></div>
+        <div class="pager">
+          <button id="page-prev" class="round-btn small" aria-label="Previous page"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg></button>
+          <span id="page-label">1–20</span>
+          <button id="page-next" class="round-btn small" aria-label="Next page"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg></button>
+        </div>
+      </div>
+
+      <!-- Skins -->
+      <div id="skins" class="layer screen hidden">
+        <header>
+          <button class="round-btn back" data-back aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg></button>
+          <h2>Balls</h2>
+          <div class="star-chip"><span class="star">★</span> <b class="stars-total">0</b></div>
+        </header>
+        <div id="skin-grid" class="grid skins"></div>
+      </div>
+
+      <!-- Settings -->
+      <div id="settings" class="layer screen hidden">
+        <header>
+          <button class="round-btn back" data-back aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg></button>
+          <h2>Settings</h2>
+          <div></div>
+        </header>
+        <div class="settings-list">
+          <label class="toggle"><span>Sound effects</span><input type="checkbox" id="opt-sfx" /><i></i></label>
+          <label class="toggle"><span>Music</span><input type="checkbox" id="opt-music" /><i></i></label>
+          <div class="controls-help">
+            <b>Controls</b>
+            <p>Swipe or drag, or use the arrow keys / WASD to roll.</p>
+            <p><kbd>Z</kbd> undo · <kbd>R</kbd> restart · <kbd>H</kbd> hint · <kbd>Esc</kbd> menu</p>
+          </div>
+          <button class="wide-btn" id="btn-privacy">Privacy &amp; Terms</button>
+          <button class="wide-btn danger" id="btn-reset">Reset progress</button>
+          <p class="credits">Slide &amp; Paint v1.0 · Font: Fredoka (SIL OFL)</p>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="results" class="layer modal-wrap hidden">
+        <div class="modal">
+          <h3 id="res-title">Level 1</h3>
+          <div class="res-stars"><span>★</span><span>★</span><span>★</span></div>
+          <p id="res-info">Moves 4 · Par 4</p>
+          <p id="res-extra"></p>
+          <div class="modal-buttons">
+            <button id="res-replay" class="round-btn" aria-label="Replay"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v5h-5" /></svg></button>
+            <button id="res-next" class="big-btn compact"><span>NEXT</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generic dialog -->
+      <div id="dialog" class="layer modal-wrap hidden">
+        <div class="modal">
+          <h3 id="dlg-title"></h3>
+          <div id="dlg-body"></div>
+          <div class="modal-buttons">
+            <button id="dlg-cancel" class="wide-btn">Cancel</button>
+            <button id="dlg-ok" class="wide-btn primary">OK</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="toast" class="hidden"></div>
+    </div>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
