@@ -9,6 +9,7 @@ const state = {
   adPlaying: false,
   muteFromPlatform: false,
   listeners: new Set(),
+  user: null,
 };
 
 export const sdk = {
@@ -44,6 +45,33 @@ export const sdk = {
     } catch (e) {
       console.warn('[sdk] init failed', e);
       state.cg = null;
+    }
+  },
+
+  // True when progress is stored with the CrazyGames data module (cloud for
+  // logged-in players, synced automatically by the SDK).
+  get cloudSave() {
+    return sdk.available && !!(state.cg && state.cg.data);
+  },
+  get loggedIn() {
+    return !!state.user;
+  },
+
+  // Re-run when the player logs in / out on CrazyGames so their cloud save is loaded.
+  async watchUser(onAuth) {
+    if (!sdk.available || !state.cg.user) return;
+    try {
+      state.user = await state.cg.user.getUser();
+    } catch (e) {
+      state.user = null;
+    }
+    try {
+      state.cg.user.addAuthListener((user) => {
+        state.user = user;
+        onAuth(user);
+      });
+    } catch (e) {
+      /* account integration not available */
     }
   },
 

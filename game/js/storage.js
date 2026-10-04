@@ -21,10 +21,27 @@ const DEFAULTS = () => ({
 
 export const save = DEFAULTS();
 
+// Progress lives in the CrazyGames data module when the SDK is available
+// (cloud-synced for logged-in players), otherwise in localStorage.
 export function loadSave() {
+  let raw = null;
   try {
-    const raw = sdk.getItem(KEY);
-    if (raw) Object.assign(save, DEFAULTS(), JSON.parse(raw));
+    raw = sdk.getItem(KEY);
+    // First run on CrazyGames after playing without the SDK: migrate the local save.
+    if (!raw && sdk.cloudSave) {
+      raw = localStorage.getItem(KEY);
+      if (raw) sdk.setItem(KEY, raw);
+    }
+  } catch (e) {
+    /* storage blocked */
+  }
+  Object.keys(save).forEach((k) => delete save[k]);
+  Object.assign(save, DEFAULTS());
+  try {
+    if (raw) {
+      const data = JSON.parse(raw);
+      Object.assign(save, data, { daily: Object.assign(DEFAULTS().daily, data.daily) });
+    }
   } catch (e) {
     console.warn('save corrupted, starting fresh', e);
   }
@@ -34,7 +51,14 @@ export function loadSave() {
 let pending = 0;
 export function persist() {
   clearTimeout(pending);
-  pending = setTimeout(() => sdk.setItem(KEY, JSON.stringify(save)), 150);
+  pending = setTimeout(flushSave, 150);
+}
+
+// Write immediately (level complete, tab hidden, page closing).
+export function flushSave() {
+  clearTimeout(pending);
+  pending = 0;
+  sdk.setItem(KEY, JSON.stringify(save));
 }
 
 export function resetSave() {

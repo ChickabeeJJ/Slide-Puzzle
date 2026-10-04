@@ -46,7 +46,7 @@ Requirements researched from the CrazyGames developer docs (Technical, Gameplay,
 - [x] Rewarded ads are opt-in only (hint and skin unlock), and the reward is granted only on `adFinished`.
 - [x] Audio muted and game paused while an ad plays, then restored on `adFinished` / `adError`.
 - [x] Respects the platform's `settings.muteAudio` and listens for changes.
-- [x] Progress saved through the SDK **data module** (cloud save across devices), falling back to `localStorage` off-platform.
+- [x] Progress saved through the SDK **data module** (cloud save across devices). It is written immediately on level complete, tab hide and page close; existing local saves are migrated on first run; and the right save loads when a player logs in or out (`user.addAuthListener`). Falls back to `localStorage` off-platform.
 - [x] Works without the SDK (adblock or other hosts): no errors, and the game never blocks.
 - [x] Arrow keys, space, PageUp/PageDown, Home/End and the mouse wheel never scroll the page; the context menu is disabled.
 - [x] **Restricted keys respected:** `Esc` is never bound or intercepted (CrazyGames uses it to exit fullscreen); the menu is on `M`, and Tab is left alone.

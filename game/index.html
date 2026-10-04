@@ -52,23 +52,46 @@
 
       <!-- Main menu -->
       <div id="menu" class="layer screen hidden">
+        <div class="menu-top">
+          <div class="star-chip"><span class="star">★</span> <b id="menu-stars">0</b></div>
+          <button id="btn-sound" class="round-btn small" aria-label="Sound on/off">
+            <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" /><path class="waves" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" /><path class="mute" d="M16 9l6 6M22 9l-6 6" /></svg>
+          </button>
+        </div>
         <div class="menu-inner">
+          <canvas id="menu-demo" aria-hidden="true"></canvas>
           <h1 class="logo" aria-label="Slide and Paint">
             <span class="l1">Slide</span>
             <span class="amp">&amp;</span>
             <span class="l2">Paint</span>
           </h1>
+          <div class="progress">
+            <div class="progress-label"><span id="progress-text">Level 1 of 200</span><span id="progress-pct">0%</span></div>
+            <div class="progress-bar"><i id="progress-fill"></i></div>
+          </div>
           <button id="btn-play" class="big-btn">
             <span>PLAY</span>
             <small id="play-sub">Level 1</small>
           </button>
           <div class="menu-row">
-            <button class="tile-btn" id="btn-levels"><i>▦</i><span>Levels</span></button>
-            <button class="tile-btn" id="btn-daily"><i>★</i><span>Daily</span><em id="daily-sub"></em></button>
-            <button class="tile-btn" id="btn-skins"><i>●</i><span>Balls</span></button>
-            <button class="tile-btn" id="btn-settings"><i>⚙</i><span>Settings</span></button>
+            <button class="tile-btn" id="btn-levels">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" /><rect x="3" y="14" width="7" height="7" rx="2" /><rect x="14" y="14" width="7" height="7" rx="2" /></svg>
+              <span>Levels</span>
+            </button>
+            <button class="tile-btn" id="btn-daily">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /><path d="M12 13l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z" class="fill" /></svg>
+              <span>Daily</span><em id="daily-sub"></em>
+            </button>
+            <button class="tile-btn" id="btn-skins">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M5 9.5c4 2 10 2 14 0M5 14.5c4-2 10-2 14 0" /></svg>
+              <span>Balls</span>
+            </button>
+            <button class="tile-btn" id="btn-settings">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" /><circle cx="12" cy="12" r="7" /><path d="M12 2.5v2.5M12 19v2.5M21.5 12H19M5 12H2.5M18.7 5.3L17 7M7 17l-1.7 1.7M18.7 18.7L17 17M7 7L5.3 5.3" /></svg>
+              <span>Settings</span>
+            </button>
           </div>
-          <div class="star-chip"><span class="star">★</span> <b id="menu-stars">0</b></div>
+          <p id="save-note" class="save-note"></p>
           <button class="text-btn" id="btn-privacy-menu">Privacy &amp; Terms</button>
         </div>
       </div>
@@ -110,14 +133,6 @@
           <label class="toggle"><span>Music</span><input type="checkbox" id="opt-music" /><i></i></label>
           <label class="toggle"><span>Screen shake</span><input type="checkbox" id="opt-shake" /><i></i></label>
           <label class="toggle"><span>Show move counter</span><input type="checkbox" id="opt-moves" /><i></i></label>
-          <div class="controls-help">
-            <b>Controls</b>
-            <p>Swipe or drag, or use the arrow keys / WASD to roll.</p>
-            <p><kbd>Z</kbd> undo · <kbd>R</kbd> restart · <kbd>H</kbd> hint · <kbd>M</kbd> menu</p>
-          </div>
-          <button class="wide-btn" id="btn-privacy">Privacy &amp; Terms</button>
-          <button class="wide-btn danger" id="btn-reset">Reset progress</button>
-          <p class="credits">Slide &amp; Paint v1.0 · Font: Fredoka (SIL OFL)</p>
         </div>
       </div>
 

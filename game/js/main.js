@@ -1,5 +1,5 @@
 import { sdk } from './sdk.js';
-import { save, loadSave, persist, resetSave, totalStars } from './storage.js';
+import { save, loadSave, persist, flushSave, totalStars } from './storage.js';
 import { unlockAudio, setAudioFlags, sfx } from './audio.js';
 import { SKINS, skinById, drawBall } from './skins.js';
 import { drawGame, layoutBoard, paintFor } from './render.js';
@@ -298,6 +298,7 @@ function completeLevel() {
   sdk.happytime();
   const before = totalStars();
   recordProgress(stars);
+  flushSave();
   const unlocked = SKINS.filter((s) => !s.ad && s.stars > before && s.stars <= totalStars());
   syncGameplay();
   later(1.35, () => showResults(unlocked));
@@ -516,8 +517,70 @@ function renderMenu() {
   $('#menu-stars').textContent = totalStars();
   const done = save.daily.done[dayKey()];
   const sub = $('#daily-sub');
-  sub.textContent = done ? '✓' : 'NEW';
+  sub.textContent = done ? (save.daily.streak > 1 ? `🔥${save.daily.streak}` : '✓') : 'NEW';
   sub.classList.toggle('done', !!done);
+  const solved = Math.min(LEVELS.length, Object.keys(save.stars).filter((n) => n <= LEVELS.length).length);
+  const pct = Math.round((solved / LEVELS.length) * 100);
+  $('#progress-text').textContent = save.current > LEVELS.length ? `Endless · Level ${save.current}` : `Level ${save.current} of ${LEVELS.length}`;
+  $('#progress-pct').textContent = `${pct}%`;
+  $('#progress-fill').style.width = `${Math.max(3, pct)}%`;
+  $('#btn-sound').classList.toggle('off', !(save.sfx || save.music));
+  $('#save-note').textContent = sdk.cloudSave ? (sdk.loggedIn ? '☁ Progress saved to your CrazyGames account' : '☁ Progress saved · log in to sync across devices') : '';
+}
+
+// Animated demo in the main menu: a ball paints a loop of tiles, changing colour each lap.
+const DEMO_PAINTS = ['#3ae5de', '#fd7861', '#fbbd2c', '#a45cf2', '#5ad16b'];
+const DEMO_PATH = (() => {
+  const p = [];
+  for (let x = 0; x < 7; x++) p.push([x, 0]);
+  for (let y = 1; y < 3; y++) p.push([6, y]);
+  for (let x = 5; x >= 0; x--) p.push([x, 2]);
+  p.push([0, 1]);
+  return p;
+})();
+function drawMenuDemo(t) {
+  const cv = $('#menu-demo');
+  if (!cv.offsetWidth) return;
+  const w = cv.offsetWidth,
+    h = cv.offsetHeight;
+  if (cv.width !== Math.round(w * DPR)) {
+    cv.width = Math.round(w * DPR);
+    cv.height = Math.round(h * DPR);
+  }
+  const c = cv.getContext('2d');
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.clearRect(0, 0, w, h);
+  const s = Math.min(w / 7, h / 3);
+  const ox = (w - s * 7) / 2,
+    oy = (h - s * 3) / 2;
+  const n = DEMO_PATH.length;
+  const pos = (t * 7) % n;
+  const lap = Math.floor((t * 7) / n);
+  const cur = DEMO_PAINTS[lap % DEMO_PAINTS.length],
+    prev = DEMO_PAINTS[(lap + DEMO_PAINTS.length - 1) % DEMO_PAINTS.length];
+  const gap = s * 0.05;
+  DEMO_PATH.forEach(([x, y], i) => {
+    c.fillStyle = '#454d61';
+    c.fillRect(ox + x * s, oy + y * s, s + 0.5, s + 0.5);
+    c.fillStyle = i <= pos ? cur : prev;
+    c.fillRect(ox + x * s + gap, oy + y * s + gap, s - gap * 2, s - gap * 2);
+  });
+  // Inner raised wall.
+  c.fillStyle = '#d5ccbb';
+  c.fillRect(ox + s, oy + s, s * 5, s);
+  c.fillStyle = '#fff8e4';
+  c.fillRect(ox + s, oy + s, s * 5, s * 0.72);
+  const i = Math.floor(pos),
+    f = pos - i;
+  const [ax, ay] = DEMO_PATH[i],
+    [bx, by] = DEMO_PATH[(i + 1) % n];
+  const bxp = ox + (ax + (bx - ax) * f + 0.5) * s,
+    byp = oy + (ay + (by - ay) * f + 0.5) * s;
+  c.fillStyle = 'rgba(25,25,45,0.25)';
+  c.beginPath();
+  c.ellipse(bxp + s * 0.08, byp + s * 0.16, s * 0.36, s * 0.24, 0, 0, Math.PI * 2);
+  c.fill();
+  drawBall(c, bxp, byp, s * 0.36, g.skin, t * 6);
 }
 
 let levelPage = 0;
@@ -644,7 +707,8 @@ function frame(t) {
   const dt = Math.min(0.05, last ? (t - last) / 1000 : 0.016);
   last = t;
   update(dt);
-  render();
+  if (screen === 'menu') drawMenuDemo(t / 1000);
+  else render();
   requestAnimationFrame(frame);
 }
 
@@ -787,16 +851,13 @@ function bindUi() {
     persist();
     applyAudio();
   });
-  click('#btn-privacy', () => dialog({ title: 'Privacy & Terms', html: PRIVACY_HTML }));
   click('#btn-privacy-menu', () => dialog({ title: 'Privacy & Terms', html: PRIVACY_HTML }));
-  click('#btn-reset', async () => {
-    const ok = await dialog({ title: 'Reset progress?', html: '<p>All levels, stars and unlocked balls will be lost. This cannot be undone.</p>', ok: 'Reset', cancel: 'Cancel' });
-    if (!ok) return;
-    resetSave();
-    g.skin = skinById(save.skin);
+  click('#btn-sound', () => {
+    const on = !(save.sfx || save.music);
+    save.sfx = save.music = on;
+    persist();
     applyAudio();
-    toast('Progress reset');
-    renderSettings();
+    renderMenu();
   });
 
   window.addEventListener('keydown', onKey, { passive: false });
@@ -808,7 +869,10 @@ function bindUi() {
   window.addEventListener('wheel', (e) => e.target.closest('.grid, .settings-list') || e.preventDefault(), { passive: false });
   window.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('resize', layout);
+  // Never lose progress when the tab is hidden or closed.
+  window.addEventListener('pagehide', flushSave);
   document.addEventListener('visibilitychange', () => {
+    if (document.hidden) flushSave();
     setAudioFlags({ hidden: document.hidden });
     syncGameplay();
   });
@@ -830,6 +894,14 @@ async function boot() {
   sdk.loadingStart();
   loadSave();
   g.skin = skinById(save.skin);
+  // Logging in/out on CrazyGames swaps to that account's cloud save.
+  sdk.watchUser(() => {
+    loadSave();
+    g.skin = skinById(save.skin);
+    applyAudio();
+    if (screen === 'menu') renderMenu();
+    else if (screen === 'play' && !play.complete) startLevel('campaign', save.current);
+  });
   applyAudio();
   bindUi();
   try {
