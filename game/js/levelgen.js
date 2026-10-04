@@ -34,10 +34,28 @@ export function hashString(str) {
 }
 
 // Compact level encoding: "w,h,sx,sy,par:rows" where rows is w*h chars of '#'/'.'.
+// Packed form: floor bits, 6 per base64url character (about 6x smaller than '#'/'.').
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
 export function decodeLevel(str) {
-  const [head, cells] = str.split(':');
+  const [head, data] = str.split(':');
   const [w, h, sx, sy, par] = head.split(',').map(Number);
+  let cells = data;
+  if (!/^[#.]*$/.test(data)) {
+    cells = '';
+    for (let i = 0; i < w * h; i++) cells += (B64.indexOf(data[(i / 6) | 0]) >> (i % 6)) & 1 ? '.' : '#';
+  }
   return makeLevel(w, h, cells, sx, sy, par);
+}
+
+export function packLevel(lv) {
+  let out = '';
+  for (let i = 0; i < lv.w * lv.h; i += 6) {
+    let v = 0;
+    for (let b = 0; b < 6 && i + b < lv.w * lv.h; b++) if (lv.floor[i + b]) v |= 1 << b;
+    out += B64[v];
+  }
+  return `${lv.w},${lv.h},${lv.sx},${lv.sy},${lv.par}:${out}`;
 }
 
 export function encodeLevel(lv) {

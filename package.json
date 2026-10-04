@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "levels": "node tools/generate-levels.mjs 200",
-    "serve": "python3 -m http.server 8080 --directory game",
-    "build": "bash tools/build.sh",
-    "marketing": "node tools/capture.mjs"
+    "serve": "python3 -m http.server 8080 --directory dist",
+    "build": "node tools/build.mjs",
+    "marketing": "node tools/capture.mjs",
+    "dev": "python3 -m http.server 8080 --directory game"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
   }
 }

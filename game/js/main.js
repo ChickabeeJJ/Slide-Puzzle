@@ -904,11 +904,8 @@ async function boot() {
   });
   applyAudio();
   bindUi();
-  try {
-    await Promise.race([document.fonts.load('700 20px Fredoka'), new Promise((r) => setTimeout(r, 1500))]);
-  } catch (e) {
-    /* fonts are optional */
-  }
+  // Fonts are preloaded and use font-display: swap, so don't wait for them;
+  // the canvas redraws every frame and picks the font up as soon as it lands.
   startLevel('campaign', Math.min(save.current, Math.max(1, save.unlocked)));
   sdk.loadingStop();
   booted = true;

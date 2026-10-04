@@ -8,8 +8,9 @@ The look and feel follow the reference recording: cream backdrop, slate tiles, r
 
 | Path | What it is |
 | --- | --- |
-| `game/` | The game (plain HTML5 + Canvas, ES modules, no build step). This folder is what you upload. |
-| `release/slide-and-paint-crazygames.zip` | Ready-to-upload build (`index.html` at the zip root, ~70 KB, 17 files). |
+| `game/` | Game source (plain HTML5 + Canvas, ES modules). Runs as-is for development. |
+| `dist/` | Optimised build (`npm run build`): one minified JS bundle, inlined CSS, preloads. This is what is deployed and zipped. |
+| `release/slide-and-paint-crazygames.zip` | Ready-to-upload build of `dist/` (`index.html` at the zip root, ~60 KB, 5 files). |
 | `marketing/cover-landscape-1920x1080.png` | Cover 16:9 |
 | `marketing/cover-portrait-800x1200.png` | Cover 2:3 |
 | `marketing/cover-square-800x800.png` | Cover 1:1 |
@@ -84,14 +85,30 @@ Requirements researched from the CrazyGames developer docs (Technical, Gameplay,
 
 ## Deploying to Vercel
 
-`vercel.json` serves the `game/` folder as a static site, with no build step. No Project Settings changes are needed. If the dashboard overrides it, set **Output Directory** to `game` and leave the build command empty.
+`vercel.json` serves the prebuilt `dist/` folder as a static site, with no build step on Vercel (run `npm run build` and commit before deploying). If the dashboard overrides it, set **Output Directory** to `dist` and leave the build command empty.
+
+## Load-time optimisations
+
+Measured to `gameplayStart` on a throttled connection (150 ms latency, 1.6 Mbps):
+
+| | Requests | Bytes | Time to playable |
+| --- | --- | --- | --- |
+| Before (`game/`) | 13 | 159 KB | ~1.20 s |
+| After (`dist/`) | 5 | 102 KB | ~0.76 s |
+
+- All JS modules bundled and minified into one file, which removes the import waterfall.
+- CSS minified and inlined into `index.html`.
+- `modulepreload` and font preloads placed right after the SDK tag, so everything downloads in parallel.
+- Level data packed as bits (25 KB → 7 KB).
+- Boot no longer waits for web fonts (`font-display: swap`, and the canvas redraws every frame).
 
 ## Development
 
 ```bash
-npm run serve        # http://localhost:8080 (python3 static server)
+npm run dev          # http://localhost:8080, serves the game/ source
+npm run serve        # http://localhost:8080, serves the optimised dist/ build
 npm run levels       # regenerate game/js/levels.js (deterministic, verified)
-npm run build        # -> release/slide-and-paint-crazygames.zip
+npm run build        # -> dist/ + release/slide-and-paint-crazygames.zip
 npm run marketing    # -> marketing/ covers + videos (Playwright Chromium + ffmpeg)
 ```
 
