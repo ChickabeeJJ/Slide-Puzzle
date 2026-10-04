@@ -82,6 +82,10 @@ Requirements researched from the CrazyGames developer docs (Technical, Gameplay,
 - **Suggested tags:** Puzzle, Maze, Casual, Relaxing, Mobile, Brain, Logic, Ball
 - **Orientation:** Both (responsive)
 
+## Deploying to Vercel
+
+`vercel.json` serves the `game/` folder as a static site, with no build step. No Project Settings changes are needed. If the dashboard overrides it, set **Output Directory** to `game` and leave the build command empty.
+
 ## Development
 
 ```bash
