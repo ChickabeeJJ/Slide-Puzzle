@@ -28,7 +28,7 @@ The look and feel follow the reference recording: cream backdrop, slate tiles, r
 - **Level select** with pages, stars and locks.
 - **Juice:** paint pops, a trail, squash on impact, screen bump, a ripple on completion, sparkles and praise words.
 - **Synthesized audio** (WebAudio; no audio files): roll, bump, rising paint notes, a win jingle and soft generative music. Sound effects and music can each be toggled.
-- **Controls:** swipe on touch, drag with the mouse, arrow keys or WASD. `Z` undo · `R` restart · `H` hint · `Esc` menu · `Enter` next.
+- **Controls:** swipe on touch, drag with the mouse, arrow keys or WASD. `Z` undo · `R` restart · `H` hint · `M` menu · `Enter` next.
 - **Responsive:** works from 360×640 phones to 1920×1080 fullscreen, in both orientations, and is crisp on high-DPI screens.
 
 ## CrazyGames compliance checklist
@@ -48,7 +48,11 @@ Requirements researched from the CrazyGames developer docs (Technical, Gameplay,
 - [x] Respects the platform's `settings.muteAudio` and listens for changes.
 - [x] Progress saved through the SDK **data module** (cloud save across devices), falling back to `localStorage` off-platform.
 - [x] Works without the SDK (adblock or other hosts): no errors, and the game never blocks.
-- [x] Arrow keys, space, Tab, PageUp/PageDown and the mouse wheel never scroll the page; the context menu is disabled.
+- [x] Arrow keys, space, PageUp/PageDown, Home/End and the mouse wheel never scroll the page; the context menu is disabled.
+- [x] **Restricted keys respected:** `Esc` is never bound or intercepted (CrazyGames uses it to exit fullscreen); the menu is on `M`, and Tab is left alone.
+- [x] Safe-area insets (notches, rounded corners) respected on every edge in the CrazyGames app.
+- [x] iOS audio unlocks on `touchend`/`click` and resumes after interruptions.
+- [x] `gameplayStop` while the tab is hidden.
 - [x] No audio before the first user interaction (autoplay policy).
 - [x] Audio is suspended when the tab is hidden.
 - [x] Runs in the iframe on any domain: relative paths, no sitelock, no external requests other than the SDK.
@@ -58,7 +62,7 @@ Requirements researched from the CrazyGames developer docs (Technical, Gameplay,
 - [x] **No custom fullscreen button**, since CrazyGames provides one.
 - [x] No external links, no external ads, no external login, and no other platform's branding or "more games" buttons.
 - [x] In-game **Privacy & Terms** (main menu and Settings), as required for Basic Launch.
-- [x] English UI; the tutorial on level 1 shows the swipe path.
+- [x] **Onboarding:** level 1 is a guided mini tutorial with an animated swipe hand, the solution path and step-by-step tips adapted to touch or keyboard. Level 2 points out Undo and Hint. English UI.
 - [x] Fast to gameplay: the game boots straight into the current level.
 - [x] Touch, mouse and keyboard controls; restricted browser keys are avoided.
 - [x] Original art and code. The font is Fredoka (SIL OFL, licence in `game/assets/fonts/OFL.txt`).
@@ -74,7 +78,7 @@ Requirements researched from the CrazyGames developer docs (Technical, Gameplay,
 - **Title:** Slide & Paint
 - **Short description:** Roll the ball, paint every tile! A relaxing maze puzzle with 200+ levels.
 - **Description:** Swipe to send the ball rolling. It won't stop until it hits a wall and paints every tile it passes. Fill the whole maze with colour to clear the level! Start easy, then work through twisty Expert mazes, aim for par to earn 3 stars, and play a new Daily Challenge every day. Stuck? Undo any move or grab a hint. Collect stars to unlock fun new balls like the Beach Ball, Eight Ball, Planet and Rainbow.
-- **Controls:** Swipe or drag / Arrow keys or WASD to roll · Z undo · R restart · H hint · Esc menu
+- **Controls:** Swipe or drag / Arrow keys or WASD to roll · Z undo · R restart · H hint · M menu
 - **Suggested tags:** Puzzle, Maze, Casual, Relaxing, Mobile, Brain, Logic, Ball
 - **Orientation:** Both (responsive)
 

@@ -16,6 +16,7 @@ const DEFAULTS = () => ({
   showMoves: true,
   daily: { last: null, streak: 0, best: 0, done: {} },
   tutorialDone: false,
+  tipsDone: false,
 });
 
 export const save = DEFAULTS();

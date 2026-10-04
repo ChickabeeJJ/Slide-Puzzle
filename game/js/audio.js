@@ -23,7 +23,8 @@ export function unlockAudio() {
     applyVolumes();
     startMusic();
   }
-  if (ctx.state === 'suspended' && !flags.hidden) ctx.resume();
+  // 'interrupted' happens on iOS after calls/alarms; resume on the next gesture.
+  if ((ctx.state === 'suspended' || ctx.state === 'interrupted') && !flags.hidden) ctx.resume();
 }
 
 export function setAudioFlags(next) {

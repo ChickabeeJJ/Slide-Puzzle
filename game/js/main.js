@@ -96,10 +96,18 @@ function startLevel(mode, n) {
   clearHint();
   paintCell(lv.sy * lv.w + lv.sx, true);
   layout();
+  g.tut = null;
+  $$('.tut-pulse').forEach((e) => e.classList.remove('tut-pulse'));
   if (mode === 'campaign' && n === 1 && !save.tutorialDone) {
-    $('#tutorial').classList.remove('hidden');
+    // Mini tutorial: a hand shows each swipe along the solution, with step-by-step tips.
     g.hintSeq = solve(lv, lv.sx, lv.sy, g.painted, 400);
+    g.tut = { step: 0, t0: g.now };
     refreshHintPts();
+    tutorialText();
+  } else if (mode === 'campaign' && n === 2 && !save.tipsDone) {
+    tutorialTip(`Stuck? <b>↶ Undo</b> a move or tap the <b>💡 Hint</b>`);
+    $('#btn-undo').classList.add('tut-pulse');
+    $('#btn-hint').classList.add('tut-pulse');
   } else {
     $('#tutorial').classList.add('hidden');
   }
@@ -134,6 +142,30 @@ function paintCell(i, silent = false) {
   }
 }
 
+const IS_TOUCH = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+const ARROWS = { up: '↑', down: '↓', left: '←', right: '→' };
+
+function tutorialTip(html) {
+  const t = $('#tutorial');
+  t.innerHTML = html;
+  t.classList.remove('hidden');
+  t.style.animation = 'none';
+  void t.offsetWidth;
+  t.style.animation = '';
+}
+
+function tutorialText() {
+  const step = g.tut.step;
+  const dir = g.hintSeq && g.hintSeq[0];
+  const how = dir ? (IS_TOUCH ? `Swipe <b>${dir}</b>` : `Swipe or press <b>${ARROWS[dir]}</b>`) : '';
+  const lines = [
+    `${how} to roll the ball`,
+    `It rolls until it hits a wall!<br>${how} again`,
+    `Paint <b>every tile</b> to win!`,
+  ];
+  tutorialTip(lines[Math.min(step, lines.length - 1)]);
+}
+
 function tryMove(dir) {
   if (screen !== 'play' || play.complete || modalOpen || sdk.adPlaying) return;
   if (g.ball.moving) {
@@ -157,7 +189,15 @@ function tryMove(dir) {
   b.travel = 0;
   play.move = { fx: b.x, fy: b.y, tx: r.x, ty: r.y, path: r.path, t0: g.now, dur: Math.max(0.09, r.path.length / 24), done: 0 };
   sfx.roll(r.path.length);
-  $('#tutorial').classList.add('hidden');
+  if (g.tut) {
+    g.tut.step++;
+    g.tut.t0 = g.now;
+  } else if (play.mode === 'campaign' && play.n === 2 && play.moves >= 3) {
+    $('#tutorial').classList.add('hidden');
+    $$('.tut-pulse').forEach((e) => e.classList.remove('tut-pulse'));
+    save.tipsDone = true;
+    persist();
+  }
   updateHud();
 }
 
@@ -187,6 +227,14 @@ function finishMove() {
   if (g.paintedCount === g.lv.floorCount) return completeLevel();
   if (g.hintSeq && g.hintSeq.length) refreshHintPts();
   else clearHint();
+  if (g.tut) {
+    // Player went off-script: recompute the guide from here.
+    if (!g.hintSeq || !g.hintSeq.length) {
+      g.hintSeq = solve(g.lv, g.ball.x, g.ball.y, g.painted, 400);
+      refreshHintPts();
+    }
+    tutorialText();
+  }
   if (play.queued.length) tryMove(play.queued.shift());
 }
 
@@ -231,6 +279,10 @@ function starsFor(moves, par) {
 function completeLevel() {
   play.complete = true;
   play.queued = [];
+  if (g.tut) {
+    g.tut = null;
+    $('#tutorial').classList.add('hidden');
+  }
   clearHint();
   const stars = starsFor(play.moves, g.lv.par);
   play.stars = stars;
@@ -415,7 +467,7 @@ function showScreen(name) {
 
 function syncGameplay() {
   if (!booted) return;
-  sdk.setGameplay(screen === 'play' && !play.complete && !modalOpen && !sdk.adPlaying);
+  sdk.setGameplay(screen === 'play' && !play.complete && !modalOpen && !sdk.adPlaying && !document.hidden);
 }
 
 function openModal(sel) {
@@ -607,7 +659,7 @@ const KEYS = {
   ArrowRight: 'right',
   KeyD: 'right',
 };
-const BLOCKED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'PageUp', 'PageDown', 'Home', 'End', 'Tab', 'Backspace']);
+const BLOCKED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'PageUp', 'PageDown', 'Home', 'End']);
 
 function onKey(e) {
   unlockAudio();
@@ -615,7 +667,6 @@ function onKey(e) {
   if (e.repeat && !KEYS[e.code]) return;
   if (!$('#dialog').classList.contains('hidden')) {
     if (e.code === 'Enter') $('#dlg-ok').click();
-    if (e.code === 'Escape') $('#dlg-cancel').click();
     return;
   }
   if (!$('#results').classList.contains('hidden')) {
@@ -625,11 +676,11 @@ function onKey(e) {
   }
   if (screen === 'play') {
     if (KEYS[e.code]) return tryMove(KEYS[e.code]);
-    if (e.code === 'KeyZ' || e.code === 'Backspace') return undo();
+    if (e.code === 'KeyZ') return undo();
     if (e.code === 'KeyR') return restart();
     if (e.code === 'KeyH') return useHint();
-    if (e.code === 'Escape') return showScreen('menu');
-  } else if (e.code === 'Escape') {
+    if (e.code === 'KeyM') return showScreen('menu');
+  } else if (e.code === 'KeyM') {
     if (screen === 'settings' && settingsReturn === 'play') {
       settingsReturn = 'menu';
       return showScreen('play');
@@ -757,7 +808,12 @@ function bindUi() {
   window.addEventListener('wheel', (e) => e.target.closest('.grid, .settings-list') || e.preventDefault(), { passive: false });
   window.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('resize', layout);
-  document.addEventListener('visibilitychange', () => setAudioFlags({ hidden: document.hidden }));
+  document.addEventListener('visibilitychange', () => {
+    setAudioFlags({ hidden: document.hidden });
+    syncGameplay();
+  });
+  // iOS only treats touchend/click as audio-unlocking gestures.
+  for (const ev of ['touchend', 'click']) window.addEventListener(ev, unlockAudio, { passive: true });
   sdk.onChange(() => {
     applyAudio();
     syncGameplay();

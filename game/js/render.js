@@ -61,6 +61,7 @@ export function drawGame(ctx, W, H, g) {
   drawHint(ctx, g);
   drawEffects(ctx, g);
   drawBallLayer(ctx, g);
+  drawTutorialHand(ctx, g);
   ctx.restore();
 
   if (g.celebrate) drawCelebrate(ctx, W, H, g);
@@ -256,6 +257,36 @@ function drawBallLayer(ctx, g) {
   ctx.ellipse(cx + r * 0.2, cy + r * 0.45, r * 1.1 * sx, r * 0.75 * sy, 0, 0, Math.PI * 2);
   ctx.fill();
   drawBall(ctx, cx, cy, r, g.skin, b.roll, sx, sy);
+}
+
+// Animated swipe gesture for the level-1 tutorial: a finger slides from the ball
+// along the next move, then fades and repeats.
+function drawTutorialHand(ctx, g) {
+  if (!g.tut || g.ball.moving || !g.hintPts || g.hintPts.length < 2) return;
+  const { s, ox, oy } = g.view;
+  const [x0, y0] = g.hintPts[0],
+    [x1, y1] = g.hintPts[1];
+  const dx = Math.sign(x1 - x0),
+    dy = Math.sign(y1 - y0);
+  const t = ((g.now - g.tut.t0) % 1.4) / 1.4;
+  const p = ease.outCubic(Math.min(1, t / 0.7));
+  const alpha = t < 0.1 ? t / 0.1 : t > 0.8 ? (1 - t) / 0.2 : 1;
+  const fx = ox + (x0 + 0.5 + dx * p * 1.8) * s,
+    fy = oy + (y0 + 0.5 + dy * p * 1.8) * s;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // Touch ripple + finger.
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.beginPath();
+  ctx.arc(fx, fy, s * 0.32, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.font = `${s * 0.75}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.shadowColor = 'rgba(0,0,0,0.25)';
+  ctx.shadowBlur = 6;
+  ctx.fillText('👆', fx + s * 0.08, fy - s * 0.05);
+  ctx.restore();
 }
 
 export function drawSparkle(ctx, x, y, r, rot = 0) {
