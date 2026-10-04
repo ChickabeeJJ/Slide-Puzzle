@@ -12,6 +12,8 @@ const DEFAULTS = () => ({
   adSkins: [],
   sfx: true,
   music: true,
+  shake: true,
+  showMoves: true,
   daily: { last: null, streak: 0, best: 0, done: {} },
   tutorialDone: false,
 });

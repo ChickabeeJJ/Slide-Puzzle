@@ -38,9 +38,9 @@ export function drawGame(ctx, W, H, g) {
   ctx.save();
   // Bump shake along the direction of the last impact.
   if (g.shake) {
-    const t = (now - g.shake.t0) / 0.18;
+    const t = (now - g.shake.t0) / 0.14;
     if (t < 1) {
-      const a = Math.sin(t * Math.PI) * s * 0.06 * (1 - t);
+      const a = Math.sin(t * Math.PI) * s * 0.018 * g.shake.k * (1 - t);
       ctx.translate(g.shake.dx * a, g.shake.dy * a);
     }
   }
@@ -247,9 +247,13 @@ function drawBallLayer(ctx, g) {
     }
   }
   // Shadow.
-  ctx.fillStyle = 'rgba(30, 30, 50, 0.28)';
+  const sh = ctx.createRadialGradient(cx + r * 0.2, cy + r * 0.45, 0, cx + r * 0.2, cy + r * 0.45, r * 1.1);
+  sh.addColorStop(0, 'rgba(25, 25, 45, 0.42)');
+  sh.addColorStop(0.5, 'rgba(25, 25, 45, 0.18)');
+  sh.addColorStop(1, 'rgba(25, 25, 45, 0)');
+  ctx.fillStyle = sh;
   ctx.beginPath();
-  ctx.ellipse(cx + r * 0.18, cy + r * 0.32, r * 0.95 * sx, r * 0.7 * sy, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + r * 0.2, cy + r * 0.45, r * 1.1 * sx, r * 0.75 * sy, 0, 0, Math.PI * 2);
   ctx.fill();
   drawBall(ctx, cx, cy, r, g.skin, b.roll, sx, sy);
 }

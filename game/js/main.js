@@ -42,6 +42,7 @@ const play = { mode: 'campaign', n: 1, moves: 0, history: [], queued: [], comple
 let screen = 'play';
 let modalOpen = false;
 let booted = false;
+let settingsReturn = 'menu';
 let lastPaintSfx = 0;
 
 const later = (sec, fn) => g.timers.push({ at: g.now + sec, fn });
@@ -143,7 +144,7 @@ function tryMove(dir) {
   const r = slide(g.lv, b.x, b.y, dir);
   if (!r.path.length) {
     const [dx, dy] = DIRS[dir];
-    g.shake = { dx, dy, t0: g.now };
+    if (save.shake) g.shake = { dx, dy, t0: g.now, k: 0.5 };
     return;
   }
   play.history.push({ x: b.x, y: b.y, painted: g.painted.slice(), count: g.paintedCount, moves: play.moves });
@@ -168,7 +169,7 @@ function finishMove() {
   b.y = m.ty;
   const [dx, dy] = DIRS[b.dir];
   b.squash = { t0: g.now, dx, dy };
-  g.shake = { dx, dy, t0: g.now };
+  if (save.shake) g.shake = { dx, dy, t0: g.now, k: 1 };
   sfx.bump();
   for (let k = 0; k < 6; k++) {
     g.particles.push({
@@ -388,6 +389,7 @@ function updateHud() {
   pill.className = 'pill ' + label;
   $('#level-name').textContent = daily ? formatDay(play.n) : `Level ${play.n}`;
   $('#move-counter').textContent = `Moves ${play.moves} · Par ${g.lv ? g.lv.par : 0}`;
+  $('#move-counter').classList.toggle('hidden', !save.showMoves);
   $('#btn-undo').disabled = !play.history.length;
   const hasHints = save.hints > 0;
   $('#hint-badge').textContent = save.hints;
@@ -550,6 +552,8 @@ async function pickSkin(s) {
 function renderSettings() {
   $('#opt-sfx').checked = save.sfx;
   $('#opt-music').checked = save.music;
+  $('#opt-shake').checked = save.shake;
+  $('#opt-moves').checked = save.showMoves;
 }
 
 function applyAudio() {
@@ -626,6 +630,10 @@ function onKey(e) {
     if (e.code === 'KeyH') return useHint();
     if (e.code === 'Escape') return showScreen('menu');
   } else if (e.code === 'Escape') {
+    if (screen === 'settings' && settingsReturn === 'play') {
+      settingsReturn = 'menu';
+      return showScreen('play');
+    }
     showScreen(screen === 'menu' ? 'play' : 'menu');
   } else if (screen === 'menu' && (e.code === 'Enter' || e.code === 'Space')) {
     $('#btn-play').click();
@@ -662,6 +670,10 @@ function bindUi() {
       fn(e);
     });
   click('#btn-back', () => showScreen('menu'));
+  click('#btn-gear', () => {
+    settingsReturn = screen;
+    showScreen('settings');
+  });
   $('#btn-undo').addEventListener('click', undo);
   $('#btn-restart').addEventListener('click', restart);
   $('#btn-hint').addEventListener('click', () => {
@@ -674,7 +686,10 @@ function bindUi() {
   });
   click('#btn-levels', () => showScreen('levels'));
   click('#btn-skins', () => showScreen('skins'));
-  click('#btn-settings', () => showScreen('settings'));
+  click('#btn-settings', () => {
+    settingsReturn = 'menu';
+    showScreen('settings');
+  });
   click('#btn-daily', () => {
     const key = dayKey();
     startLevel('daily', key);
@@ -684,7 +699,9 @@ function bindUi() {
   $$('[data-back]').forEach((b) =>
     b.addEventListener('click', () => {
       sfx.click();
-      showScreen('menu');
+      const back = b.closest('#settings') ? settingsReturn : 'menu';
+      settingsReturn = 'menu';
+      showScreen(back);
     }),
   );
   click('#page-prev', () => {
@@ -701,6 +718,17 @@ function bindUi() {
     save.sfx = e.target.checked;
     persist();
     applyAudio();
+    sfx.click();
+  });
+  $('#opt-shake').addEventListener('change', (e) => {
+    save.shake = e.target.checked;
+    persist();
+    sfx.click();
+  });
+  $('#opt-moves').addEventListener('change', (e) => {
+    save.showMoves = e.target.checked;
+    persist();
+    updateHud();
     sfx.click();
   });
   $('#opt-music').addEventListener('change', (e) => {

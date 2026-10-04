@@ -20,7 +20,9 @@ export function skinById(id) {
   return SKINS.find((s) => s.id === id) || SKINS[0];
 }
 
-// Draws a shaded sphere. `roll` is a rotation (radians) used to animate patterns.
+// Draws a glossy 3D sphere: base shading, pattern, core shadow, bounced light,
+// rim light, fresnel edge and a sharp specular highlight with a soft bloom.
+// `roll` is a rotation (radians) used to animate patterns.
 export function drawBall(ctx, x, y, r, skin, roll = 0, sx = 1, sy = 1) {
   ctx.save();
   ctx.translate(x, y);
@@ -28,32 +30,74 @@ export function drawBall(ctx, x, y, r, skin, roll = 0, sx = 1, sy = 1) {
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.closePath();
-  const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
-  g.addColorStop(0, lighten(skin.base, 0.35));
-  g.addColorStop(0.55, skin.base);
-  g.addColorStop(1, skin.shade);
+  // Diffuse body: light from the upper left.
+  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.05, -r * 0.08, -r * 0.1, r * 1.12);
+  g.addColorStop(0, lighten(skin.base, 0.45));
+  g.addColorStop(0.35, skin.base);
+  g.addColorStop(0.8, mix(skin.base, skin.shade, 0.75));
+  g.addColorStop(1, darkenColor(skin.shade, 0.25));
   ctx.fillStyle = g;
   ctx.fill();
   ctx.save();
   ctx.clip();
   drawPattern(ctx, r, skin, roll);
-  // Re-apply shading over the pattern so it reads as a sphere.
-  const s = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.2, 0, 0, r * 1.05);
-  s.addColorStop(0, 'rgba(255,255,255,0.0)');
-  s.addColorStop(0.7, 'rgba(0,0,0,0.0)');
-  s.addColorStop(1, 'rgba(0,0,0,0.28)');
-  ctx.fillStyle = s;
+  // Core shadow on the lower right, laid over the pattern so it reads as a sphere.
+  const core = ctx.createRadialGradient(-r * 0.32, -r * 0.38, r * 0.25, -r * 0.1, -r * 0.12, r * 1.25);
+  core.addColorStop(0, 'rgba(0,0,0,0)');
+  core.addColorStop(0.55, 'rgba(0,0,0,0.04)');
+  core.addColorStop(0.85, 'rgba(20,20,40,0.24)');
+  core.addColorStop(1, 'rgba(20,20,40,0.42)');
+  ctx.fillStyle = core;
   ctx.fillRect(-r, -r, r * 2, r * 2);
+  // Bounced light from the floor along the bottom edge.
+  const bounce = ctx.createRadialGradient(r * 0.1, r * 1.05, r * 0.1, r * 0.1, r * 1.05, r * 0.75);
+  bounce.addColorStop(0, 'rgba(255,255,255,0.28)');
+  bounce.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = bounce;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  // Rim light on the top-left edge.
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = r * 0.09;
+  ctx.beginPath();
+  ctx.arc(r * 0.05, r * 0.05, r * 0.99, Math.PI * 0.95, Math.PI * 1.55);
+  ctx.stroke();
   ctx.restore();
-  // Specular highlight.
-  const h = ctx.createRadialGradient(-r * 0.38, -r * 0.42, 0, -r * 0.38, -r * 0.42, r * 0.45);
-  h.addColorStop(0, 'rgba(255,255,255,0.95)');
+  // Fine outline so light balls stay readable on light tiles.
+  ctx.lineWidth = Math.max(1, r * 0.035);
+  ctx.strokeStyle = 'rgba(40,40,60,0.18)';
+  ctx.stroke();
+  // Soft highlight bloom + sharp specular.
+  const h = ctx.createRadialGradient(-r * 0.36, -r * 0.42, 0, -r * 0.36, -r * 0.42, r * 0.5);
+  h.addColorStop(0, 'rgba(255,255,255,0.75)');
   h.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = h;
   ctx.beginPath();
-  ctx.arc(-r * 0.38, -r * 0.42, r * 0.45, 0, Math.PI * 2);
+  ctx.arc(-r * 0.36, -r * 0.42, r * 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.38, -r * 0.46, r * 0.17, r * 0.1, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(-r * 0.12, -r * 0.6, r * 0.045, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+}
+
+function parse(c) {
+  if (c.startsWith('#')) {
+    const n = parseInt(c.slice(1), 16);
+    return [n >> 16, (n >> 8) & 255, n & 255];
+  }
+  return c.match(/\d+/g).slice(0, 3).map(Number);
+}
+function mix(a, b, t) {
+  const A = parse(a),
+    B = parse(b);
+  return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`;
+}
+function darkenColor(c, amt) {
+  return `rgb(${parse(c).map((v) => Math.round(v * (1 - amt))).join(',')})`;
 }
 
 function drawPattern(ctx, r, skin, roll) {
