@@ -169,7 +169,10 @@ function tutorialText() {
 function tryMove(dir) {
   if (screen !== 'play' || play.complete || modalOpen || sdk.adPlaying) return;
   if (g.ball.moving) {
-    if (play.queued.length < 3) play.queued.push(dir);
+    // Buffer up to two deliberate follow-up inputs; repeating the previous
+    // direction can't do anything, so it is ignored instead of replayed later.
+    const last = play.queued.length ? play.queued[play.queued.length - 1] : g.ball.dir;
+    if (play.queued.length < 2 && dir !== last) play.queued.push(dir);
     return;
   }
   const b = g.ball;
@@ -728,7 +731,8 @@ const BLOCKED_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
 function onKey(e) {
   unlockAudio();
   if (BLOCKED_KEYS.has(e.code)) e.preventDefault();
-  if (e.repeat && !KEYS[e.code]) return;
+  // Holding a key must not keep queueing moves.
+  if (e.repeat) return;
   if (!$('#dialog').classList.contains('hidden')) {
     if (e.code === 'Enter') $('#dlg-ok').click();
     return;
@@ -761,17 +765,24 @@ function onPointerDown(e) {
   if (screen !== 'play' || modalOpen || e.target.closest('button')) return;
   swipe = { x: e.clientX, y: e.clientY, id: e.pointerId };
 }
+// Exactly one move per swipe: the finger/mouse must be lifted before the next one.
+// (Chaining swipes mid-drag turned hand wobble into extra, unintended moves.)
+const SWIPE_MIN_PX = 28;
 function onPointerMove(e) {
-  if (!swipe || e.pointerId !== swipe.id) return;
+  if (!swipe || e.pointerId !== swipe.id || swipe.fired) return;
+  // A mouse released outside the game frame never sends pointerup: drop the gesture
+  // instead of letting plain hovering roll the ball.
+  if (e.pointerType === 'mouse' && e.buttons === 0) {
+    swipe = null;
+    return;
+  }
   const dx = e.clientX - swipe.x,
     dy = e.clientY - swipe.y;
-  const th = Math.max(18, Math.min(40, g.view.s * 0.45));
-  if (Math.hypot(dx, dy) < th) return;
-  const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
-  tryMove(dir);
-  // Allow chaining swipes without lifting the finger.
-  swipe.x = e.clientX;
-  swipe.y = e.clientY;
+  if (Math.hypot(dx, dy) < SWIPE_MIN_PX) return;
+  // Ignore diagonal-ish drags until one axis clearly dominates.
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < Math.min(Math.abs(dx), Math.abs(dy)) * 1.4) return;
+  swipe.fired = true;
+  tryMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up');
 }
 function onPointerUp(e) {
   if (swipe && e.pointerId === swipe.id) swipe = null;
@@ -866,6 +877,7 @@ function bindUi() {
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
   window.addEventListener('pointercancel', onPointerUp);
+  window.addEventListener('blur', () => (swipe = null));
   window.addEventListener('wheel', (e) => e.target.closest('.grid, .settings-list') || e.preventDefault(), { passive: false });
   window.addEventListener('contextmenu', (e) => e.preventDefault());
   window.addEventListener('resize', layout);
