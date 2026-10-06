@@ -1,5 +1,6 @@
 import { drawBall, lighten, darken } from './skins.js';
 import { DIRS } from './levelgen.js';
+import { drawTrail, drawParticles, drawBallUnder, drawBallOver } from './fx.js';
 
 export const COLORS = {
   bg: '#fffbdf',
@@ -181,43 +182,8 @@ function drawHint(ctx, g) {
 }
 
 function drawEffects(ctx, g) {
-  const { s, ox, oy } = g.view;
-  // Paint trail behind a moving ball.
-  const b = g.ball;
-  if (b.moving) {
-    const [dx, dy] = DIRS[b.dir];
-    const len = Math.min(b.travel, 2.2);
-    const bx = ox + (b.x + 0.5) * s,
-      by = oy + (b.y + 0.5) * s;
-    const tx = bx - dx * len * s,
-      ty = by - dy * len * s;
-    const grad = ctx.createLinearGradient(bx, by, tx, ty);
-    grad.addColorStop(0, 'rgba(255,255,255,0.55)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = s * 0.5;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(bx, by);
-    ctx.lineTo(tx, ty);
-    ctx.stroke();
-  }
-  for (const p of g.particles) {
-    const t = (g.now - p.t0) / p.life;
-    if (t >= 1) continue;
-    ctx.globalAlpha = 1 - t;
-    ctx.fillStyle = p.color;
-    const px = ox + p.x * s,
-      py = oy + p.y * s;
-    const r = p.r * s * (1 - t * 0.5);
-    if (p.star) drawSparkle(ctx, px, py, r * 2, g.now * 3 + p.t0);
-    else {
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-  ctx.globalAlpha = 1;
+  drawTrail(ctx, g, g.skin);
+  drawParticles(ctx, g, drawSparkle);
 }
 
 function drawBallLayer(ctx, g) {
@@ -247,6 +213,7 @@ function drawBallLayer(ctx, g) {
       }
     }
   }
+  drawBallUnder(ctx, g, g.skin, cx, cy, r);
   // Shadow.
   const sh = ctx.createRadialGradient(cx + r * 0.2, cy + r * 0.45, 0, cx + r * 0.2, cy + r * 0.45, r * 1.1);
   sh.addColorStop(0, 'rgba(25, 25, 45, 0.42)');
@@ -256,7 +223,8 @@ function drawBallLayer(ctx, g) {
   ctx.beginPath();
   ctx.ellipse(cx + r * 0.2, cy + r * 0.45, r * 1.1 * sx, r * 0.75 * sy, 0, 0, Math.PI * 2);
   ctx.fill();
-  drawBall(ctx, cx, cy, r, g.skin, b.roll, sx, sy);
+  drawBall(ctx, cx, cy, r, g.skin, b.rot, sx, sy, g.now);
+  drawBallOver(ctx, g, g.skin, cx, cy, r);
 }
 
 // Animated swipe gesture for the level-1 tutorial: a finger slides from the ball

@@ -624,7 +624,8 @@ button:focus-visible {
   position: relative;
 }
 .skin canvas {
-  width: 70%;
+  width: 92%;
+  margin: -6px 0 -10px;
   aspect-ratio: 1;
 }
 .skin .name {

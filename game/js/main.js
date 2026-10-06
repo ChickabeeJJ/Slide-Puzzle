@@ -2,6 +2,8 @@ import { sdk } from './sdk.js';
 import { save, loadSave, persist, flushSave, totalStars } from './storage.js';
 import { unlockAudio, setAudioFlags, sfx } from './audio.js';
 import { SKINS, skinById, drawBall } from './skins.js';
+import { rotIdentity, rollBall } from './ball3d.js';
+import { resetFx, trackRolling, impactFx, stepParticles, drawBallUnder, drawBallOver } from './fx.js';
 import { drawGame, layoutBoard, paintFor } from './render.js';
 import { LEVELS } from './levels.js';
 import { decodeLevel, slide, solve, greedyNext, makeRng, hashString, generate, difficultyFor, DIRS } from './levelgen.js';
@@ -25,7 +27,9 @@ const g = {
   paintTime: null,
   paintedCount: 0,
   color: '#3ae5de',
-  ball: { x: 0, y: 0, moving: false, dir: 'right', travel: 0, roll: 0, squash: null },
+  ball: { x: 0, y: 0, moving: false, dir: 'right', travel: 0, rot: rotIdentity(), squash: null },
+  trail: [],
+  fxAcc: 0,
   particles: [],
   hintPts: null,
   hintSeq: null,
@@ -88,7 +92,8 @@ function startLevel(mode, n) {
   g.paintTime = new Float64Array(lv.w * lv.h);
   g.paintedCount = 0;
   g.color = mode === 'daily' ? '#4f8dff' : paintFor(n);
-  g.ball = { x: lv.sx, y: lv.sy, moving: false, dir: 'right', travel: 0, roll: 0, squash: null };
+  g.ball = { x: lv.sx, y: lv.sy, moving: false, dir: 'right', travel: 0, rot: rotIdentity(), squash: null };
+  resetFx(g);
   g.particles = [];
   g.celebrate = null;
   g.timers = [];
@@ -214,18 +219,8 @@ function finishMove() {
   b.squash = { t0: g.now, dx, dy };
   if (save.shake) g.shake = { dx, dy, t0: g.now, k: 1 };
   sfx.bump();
-  for (let k = 0; k < 6; k++) {
-    g.particles.push({
-      x: b.x + 0.5 + dx * 0.4 + (Math.random() - 0.5) * 0.5 * (dy ? 1 : 0.2),
-      y: b.y + 0.5 + dy * 0.4 + (Math.random() - 0.5) * 0.5 * (dx ? 1 : 0.2),
-      r: 0.05 + Math.random() * 0.05,
-      color: g.color,
-      t0: g.now,
-      life: 0.4,
-      vx: -dx * (1 + Math.random() * 2) + (Math.random() - 0.5),
-      vy: -dy * (1 + Math.random() * 2) + (Math.random() - 0.5),
-    });
-  }
+  g.trail.push({ x: b.x + 0.5, y: b.y + 0.5, t: g.now });
+  impactFx(g, g.skin, b.x + 0.5, b.y + 0.5, dx, dy);
   play.move = null;
   if (g.paintedCount === g.lv.floorCount) return completeLevel();
   if (g.hintSeq && g.hintSeq.length) refreshHintPts();
@@ -254,18 +249,16 @@ function update(dt) {
     b.x = m.fx + dx * dist;
     b.y = m.fy + dy * dist;
     b.travel = dist;
-    b.roll += (dist - prev) * 1.6 * (dx || dy);
+    // True 3D roll: angle = distance / radius (ball radius is 0.36 cells).
+    rollBall(b.rot, dx, dy, (dist - prev) / 0.36);
+    trackRolling(g, g.skin, b.x + 0.5, b.y + 0.5, dist - prev, dx, dy);
     while (m.done < m.path.length && dist >= m.done + 0.45) paintCell(m.path[m.done++]);
     if (p >= 1) {
       while (m.done < m.path.length) paintCell(m.path[m.done++]);
       finishMove();
     }
   }
-  for (const p of g.particles) {
-    p.x += (p.vx || 0) * dt;
-    p.y += (p.vy || 0) * dt;
-  }
-  g.particles = g.particles.filter((p) => g.now - p.t0 < p.life);
+  stepParticles(g, dt);
   if (g.timers.length) {
     const due = g.timers.filter((t) => t.at <= g.now);
     g.timers = g.timers.filter((t) => t.at > g.now);
@@ -541,6 +534,8 @@ const DEMO_PATH = (() => {
   p.push([0, 1]);
   return p;
 })();
+const demoRot = rotIdentity();
+let demoLast = 0;
 function drawMenuDemo(t) {
   const cv = $('#menu-demo');
   if (!cv.offsetWidth) return;
@@ -583,7 +578,13 @@ function drawMenuDemo(t) {
   c.beginPath();
   c.ellipse(bxp + s * 0.08, byp + s * 0.16, s * 0.36, s * 0.24, 0, 0, Math.PI * 2);
   c.fill();
-  drawBall(c, bxp, byp, s * 0.36, g.skin, t * 6);
+  // Roll the demo ball for real along the path direction.
+  const step = t - (demoLast || t);
+  demoLast = t;
+  rollBall(demoRot, Math.sign(bx - ax), Math.sign(by - ay), (step * 7) / 0.36);
+  drawBallUnder(c, { now: t }, g.skin, bxp, byp, s * 0.36);
+  drawBall(c, bxp, byp, s * 0.36, g.skin, demoRot, 1, 1, t);
+  drawBallOver(c, { now: t }, g.skin, bxp, byp, s * 0.36);
 }
 
 let levelPage = 0;
@@ -618,7 +619,43 @@ function skinUnlocked(s) {
   return s.ad ? save.adSkins.includes(s.id) : totalStars() >= s.stars;
 }
 
+// Ball previews roll in place with their trail style, so every skin's 3D look
+// and effects can be seen before picking it.
+let skinPreviews = [];
+let skinTick = false;
+function drawSkinPreview({ cv, skin, phase }, t) {
+  const c = cv.getContext('2d');
+  const W = cv.width,
+    r = W * 0.3,
+    cx = W * 0.56,
+    cy = W * 0.46;
+  c.clearRect(0, 0, W, W);
+  const fake = { now: t };
+  // Trail sample behind the ball.
+  const tr = skin.fx.trail;
+  const cols = tr.type === 'rainbow' ? ['#ff4d4d', '#ff9f1c', '#ffe14d', '#4cd964', '#3fa7ff', '#8e5cff'] : [tr.color];
+  const bw = (r * 1.1) / cols.length;
+  cols.forEach((col, j) => {
+    const yy = cy + (j - (cols.length - 1) / 2) * bw;
+    const gr = c.createLinearGradient(cx, 0, cx - W * 0.5, 0);
+    gr.addColorStop(0, col);
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    c.globalAlpha = tr.type === 'smoke' ? 0.35 : 0.6;
+    c.fillStyle = gr;
+    c.fillRect(cx - W * 0.5, yy - bw / 2, W * 0.5, bw + 0.5);
+  });
+  c.globalAlpha = 1;
+  drawBallUnder(c, fake, skin, cx, cy, r);
+  c.fillStyle = 'rgba(30,30,50,0.2)';
+  c.beginPath();
+  c.ellipse(cx + r * 0.15, cy + r * 0.85, r * 0.95, r * 0.3, 0, 0, Math.PI * 2);
+  c.fill();
+  drawBall(c, cx, cy, r, skin, t * 1.6 + phase, 1, 1, t);
+  drawBallOver(c, fake, skin, cx, cy, r);
+}
+
 function renderSkins() {
+  skinPreviews = [];
   $$('.stars-total').forEach((e) => (e.textContent = totalStars()));
   const grid = $('#skin-grid');
   grid.innerHTML = '';
@@ -627,19 +664,15 @@ function renderSkins() {
     const card = document.createElement('button');
     card.className = 'skin' + (open ? '' : ' locked') + (save.skin === s.id ? ' equipped' : '');
     const cv = document.createElement('canvas');
-    cv.width = cv.height = 160;
-    const c = cv.getContext('2d');
-    c.fillStyle = 'rgba(30,30,50,0.18)';
-    c.beginPath();
-    c.ellipse(86, 118, 52, 18, 0, 0, Math.PI * 2);
-    c.fill();
-    drawBall(c, 80, 76, 56, s, 0.4);
+    cv.width = cv.height = 132;
+    skinPreviews.push({ cv, skin: s, phase: skinPreviews.length * 0.9 });
     card.appendChild(cv);
     const cost = open ? (save.skin === s.id ? 'Equipped' : 'Tap to use') : s.ad ? '▶ Watch ad' : `★ ${s.stars}`;
     card.insertAdjacentHTML('beforeend', `<span class="name">${s.name}</span><span class="cost${!open && s.ad ? ' ad' : ''}">${cost}</span>`);
     card.onclick = () => pickSkin(s);
     grid.appendChild(card);
   }
+  skinPreviews.forEach((p) => drawSkinPreview(p, g.now));
 }
 
 async function pickSkin(s) {
@@ -711,6 +744,10 @@ function frame(t) {
   last = t;
   update(dt);
   if (screen === 'menu') drawMenuDemo(t / 1000);
+  // Previews animate at 30 fps: plenty for a spinning ball, half the cost on low-end phones.
+  else if (screen === 'skins') {
+    if ((skinTick = !skinTick)) skinPreviews.forEach((p) => drawSkinPreview(p, t / 1000));
+  }
   else render();
   requestAnimationFrame(frame);
 }
