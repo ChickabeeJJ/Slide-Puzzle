@@ -166,7 +166,7 @@ function tutorialText() {
   const lines = [
     `${how} to roll the ball`,
     `It rolls until it hits a wall!<br>${how} again`,
-    `Paint <b>every tile</b> to win!`,
+    `Paint <b>every tile</b> to complete the level!`,
   ];
   tutorialTip(lines[Math.min(step, lines.length - 1)]);
 }
@@ -290,7 +290,7 @@ function completeLevel() {
     text: words[Math.floor(Math.random() * words.length)],
     sparkles: Array.from({ length: 12 }, () => ({ x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2, s: 0.5 + Math.random() * 0.7, d: Math.random() * 0.5 })),
   };
-  sfx.win();
+  sfx.complete();
   sdk.happytime();
   const before = totalStars();
   recordProgress(stars);

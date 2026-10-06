@@ -124,8 +124,8 @@ function geom(N) {
         rz = 2 * z * z - 1,
         rx = 2 * z * u;
       const sky = 0.45 + 0.55 * Math.max(0, -ry);
-      const win = Math.pow(Math.max(0, rx * L[0] + ry * L[1] + rz * L[2]), 24) * 1.6;
-      G.env[k] = rz < -0.2 ? 0.32 + 0.2 * (1 + rz) : sky + win;
+      const glint = Math.pow(Math.max(0, rx * L[0] + ry * L[1] + rz * L[2]), 24) * 1.6;
+      G.env[k] = rz < -0.2 ? 0.32 + 0.2 * (1 + rz) : sky + glint;
     }
   geoCache.set(N, G);
   return G;

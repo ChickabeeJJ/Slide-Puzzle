@@ -101,7 +101,7 @@ export const sfx = {
     const step = scale[Math.min(scale.length - 1, Math.floor(progress * scale.length))];
     tone(523.25 * Math.pow(2, step / 12), { type: 'triangle', dur: 0.09, vol: 0.06 });
   },
-  win() {
+  complete() {
     if (!canPlay()) return;
     [0, 4, 7, 12, 16].forEach((s, i) => tone(523.25 * Math.pow(2, s / 12), { type: 'triangle', dur: 0.35, vol: 0.18, at: i * 0.075 }));
     tone(1046.5, { type: 'sine', dur: 0.8, vol: 0.12, at: 0.4 });

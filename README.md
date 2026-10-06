@@ -1,6 +1,6 @@
 # Slide & Paint
 
-A relaxing maze-painting puzzle for **CrazyGames**: swipe the ball, it rolls until it hits a wall and paints every tile it crosses. Paint the whole board to win.
+A relaxing maze-painting puzzle for **CrazyGames**: swipe the ball, it rolls until it hits a wall and paints every tile it crosses. Paint the whole board to complete the level.
 
 The look and feel follow the reference recording: cream backdrop, slate tiles, raised cream walls, one paint colour per level, a "HARD · Level N" header, back button, hint bulb with a video badge, and the purple "OUTSTANDING!" celebration. Everything is original code and art.
 
@@ -28,7 +28,7 @@ The look and feel follow the reference recording: cream backdrop, slate tiles, r
 - **14 ball skins:** 11 are unlocked with stars and 3 by watching a rewarded ad.
 - **Level select** with pages, stars and locks.
 - **Juice:** paint pops, a trail, squash on impact, screen bump, a ripple on completion, sparkles and praise words.
-- **Synthesized audio** (WebAudio; no audio files): roll, bump, rising paint notes, a win jingle and soft generative music. Sound effects and music can each be toggled.
+- **Synthesized audio** (WebAudio; no audio files): roll, bump, rising paint notes, a level-complete jingle and soft generative music. Sound effects and music can each be toggled.
 - **Controls:** swipe on touch, drag with the mouse, arrow keys or WASD. `Z` undo · `R` restart · `H` hint · `M` menu · `Enter` next.
 - **Responsive:** works from 360×640 phones to 1920×1080 fullscreen, in both orientations, and is crisp on high-DPI screens.
 
